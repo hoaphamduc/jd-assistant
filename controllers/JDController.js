@@ -17,7 +17,7 @@ const userCooldowns = new Map();
 exports.renderJDView = async (req, res) => {
     try {
         res.render('jd', {
-            title: 'JD Assistant | Ứng dụng của bạn'
+            title: 'JD Assistant'
         });
     } catch (error) {
         console.error('Error rendering JD view:', error);
