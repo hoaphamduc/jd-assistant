@@ -1,0 +1,26 @@
+{
+  "name": "jd-assistant",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "pm2": "pm2 start server.js --name jdassistant --env production",
+    "stoppm2": "pm2 stop server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "description": "",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.0",
+    "dotenv": "^16.4.7",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "marked": "^15.0.7",
+    "multer": "^1.4.5-lts.2",
+    "nodemon": "^3.1.9",
+    "pdf-parse": "^1.1.1"
+  }
+}

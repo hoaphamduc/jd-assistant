@@ -1,0 +1,258 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title><%= title %></title>
+
+  <style>
+    .ace_gutter {
+        z-index: 0 !important;
+    }
+  </style>
+  <!-- Bootstrap CSS để tạo giao diện đẹp -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Choices.js CSS để tạo dropdown có tính năng tìm kiếm -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
+  <!-- Ace Editor để tạo code editor -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.39.1/ace.js" integrity="sha512-tGc7XQXpQYGpFGmdQCEaYhGdJ8B64vyI9c8zdEO4vjYaWRCKYnLy+HkudtawJS3ttk/Pd7xrkRjK8ijcMMyauw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <!-- Ace Editor Modelist Extension để lấy danh sách các ngôn ngữ hỗ trợ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.39.1/ext-modelist.min.js" integrity="sha512-GAp+4Q5VgeCXiNxD89+0KWJwPSLqXM9FgTRLhJxGjB1jjFrb6l9bYUkaTun39gcvZ89FYUXLYQEhLk8TEJztYA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+  <div class="container mt-4">
+    <!-- Tiêu đề của trang -->
+    <h2 class="mb-4">Nhập JD hoặc Upload File PDF</h2>
+    
+    <!-- Form nhập JD hoặc upload PDF -->
+    <form id="jdForm" method="post" enctype="multipart/form-data" action="/jd/generate-question">
+      <!-- Textarea để nhập JD -->
+      <div class="mb-3">
+        <textarea name="jdText" id="jdText" class="form-control" placeholder="Nhập JD ở đây..." rows="10"></textarea>
+      </div>
+      <!-- Phần upload file PDF -->
+      <div class="mb-3">
+        <label for="pdfFile" class="form-label">Upload File PDF</label>
+        <input type="file" name="pdfFile" id="pdfFile" accept="application/pdf" class="form-control">
+        <!-- Nút xóa file PDF khi không cần thiết -->
+        <button type="button" id="removePdf" class="btn btn-danger btn-sm mt-2" style="display: none;">Xóa file PDF</button>
+      </div>
+      <!-- Dropdown chọn ngôn ngữ phỏng vấn toàn cầu (ví dụ: Tiếng Việt, English, 中文) -->
+      <div class="mb-3">
+        <label for="interviewLanguage" class="form-label">Chọn ngôn ngữ phỏng vấn:</label>
+        <select id="interviewLanguage" name="interviewLanguage" class="form-select" style="width: 100%;">
+          <option value="vi" selected>Tiếng Việt</option>
+          <option value="en">English</option>
+          <option value="zh">中文</option>
+          <!-- Thêm option khác nếu cần -->
+        </select>
+      </div>
+      <!-- Nút submit của form JD kèm spinner hiển thị trong lúc chờ -->
+      <div class="mb-3">
+        <button type="submit" id="submitJD" class="btn btn-primary">Cho tôi câu hỏi</button>
+        <span id="jdSpinner" class="spinner-border spinner-border-sm ms-2" style="display: none;" role="status" aria-hidden="true"></span>
+      </div>
+    </form>
+
+    <!-- Phần hiển thị câu hỏi được tạo từ server -->
+    <div id="questionSection" class="mt-4" style="display: none;">
+      <h3>Câu hỏi được tạo:</h3>
+      <div id="generatedQuestion" class="mb-3"></div>
+      <!-- Form đánh giá câu trả lời -->
+      <form id="answerForm" method="post" action="/jd/evaluate-answer">
+        <!-- Lưu lại JD và câu hỏi dưới dạng hidden để gửi sang bước đánh giá -->
+        <input type="hidden" name="jdText" id="hiddenJDText">
+        <input type="hidden" name="question" id="hiddenQuestion">
+
+        <!-- Dropdown chọn ngôn ngữ lập trình cho editor (sử dụng Choices.js để hỗ trợ search) -->
+        <div class="mb-3">
+            <label for="languageSelect" class="form-label">Chọn ngôn ngữ lập trình cho editor (nếu cần):</label>
+            <select id="languageSelect" class="form-select" style="width: 100%;"></select>
+        </div>
+        
+        <!-- Container chứa Ace Editor -->
+        <div class="mb-3">
+          <label for="codeEditor" class="form-label">Nhập câu trả lời:</label>
+          <div id="codeEditor" style="height: 500px; width: 100%; border: 1px solid #ced4da;"></div>
+          <!-- Textarea ẩn dùng để lưu nội dung từ Ace Editor khi submit -->
+          <textarea name="answer" id="answer" style="display:none;"></textarea>
+        </div>
+
+        <!-- Nút submit của form đánh giá -->
+        <div class="mb-3">
+          <button type="submit" id="submitAnswer" class="btn btn-success">Gửi câu trả lời</button>
+          <span id="answerSpinner" class="spinner-border spinner-border-sm ms-2" style="display: none;" role="status" aria-hidden="true"></span>
+        </div>
+      </form>
+    </div>
+
+    <!-- Phần hiển thị kết quả đánh giá -->
+    <div id="evaluationSection" class="mt-4" style="display: none;">
+      <h3>Kết quả đánh giá:</h3>
+      <div id="evaluationResult"></div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Choices.js để hỗ trợ dropdown có tính năng tìm kiếm -->
+  <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+  <script>
+    /**********************
+     * Xử lý file PDF
+     **********************/
+    const pdfInput = document.getElementById('pdfFile');
+    const removePdfButton = document.getElementById('removePdf');
+    // Khi file PDF được chọn, hiển thị nút xóa
+    pdfInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file && file.type === 'application/pdf') {
+        removePdfButton.style.display = 'inline-block';
+      } else {
+        removePdfButton.style.display = 'none';
+      }
+    });
+    // Khi bấm nút xóa, reset input file
+    removePdfButton.addEventListener('click', function() {
+      pdfInput.value = "";
+      removePdfButton.style.display = 'none';
+    });
+
+    /**********************
+     * Khởi tạo Ace Editor
+     **********************/
+    const editor = ace.edit("codeEditor");
+    editor.setTheme("ace/theme/monokai");
+    // Đặt mode mặc định cho editor là JavaScript
+    editor.session.setMode("ace/mode/javascript");
+    editor.setOptions({
+      fontSize: "14px",
+      showPrintMargin: false
+    });
+
+    /**********************
+     * Thiết lập dropdown cho ngôn ngữ lập trình của editor
+     **********************/
+    const modelist = ace.require("ace/ext/modelist");
+    const languageSelect = document.getElementById("languageSelect");
+    // Lặp qua danh sách các mode được hỗ trợ và tạo option cho dropdown
+    modelist.modes.forEach(function(mode) {
+      const option = document.createElement("option");
+      option.value = mode.mode; // Ví dụ: "ace/mode/javascript"
+      option.textContent = mode.caption; // Ví dụ: "JavaScript"
+      languageSelect.appendChild(option);
+    });
+    // Đặt giá trị mặc định cho dropdown editor
+    languageSelect.value = "ace/mode/javascript";
+    // Sử dụng Choices.js để hỗ trợ tìm kiếm trong dropdown
+    const choicesEditor = new Choices(languageSelect, {
+      searchEnabled: true,
+      shouldSort: false,
+      itemSelectText: '',
+      placeholder: true,
+      placeholderValue: 'Chọn ngôn ngữ...',
+    });
+    // Khi chọn ngôn ngữ mới, cập nhật mode cho Ace Editor
+    languageSelect.addEventListener("change", function() {
+      const selectedMode = this.value;
+      editor.session.setMode(selectedMode);
+    });
+
+    /**********************
+     * Thiết lập dropdown cho ngôn ngữ phỏng vấn
+     **********************/
+    const interviewLanguageSelect = document.getElementById("interviewLanguage");
+    const choicesInterview = new Choices(interviewLanguageSelect, {
+      searchEnabled: true,
+      shouldSort: false,
+      itemSelectText: '',
+      placeholder: true,
+      placeholderValue: 'Chọn ngôn ngữ phỏng vấn...',
+    });
+
+    /**********************
+     * Xử lý submit form JD (tạo câu hỏi)
+     **********************/
+    document.getElementById('jdForm').addEventListener('submit', async function(e) {
+      e.preventDefault(); // Ngăn chặn hành vi submit mặc định
+      const jdForm = e.target;
+      const submitJD = document.getElementById('submitJD');
+      const jdSpinner = document.getElementById('jdSpinner');
+
+      // Disable nút submit và hiển thị spinner khi đang xử lý
+      submitJD.disabled = true;
+      jdSpinner.style.display = 'inline-block';
+
+      // Tạo FormData từ form để gửi dữ liệu (bao gồm JD, file PDF, và ngôn ngữ phỏng vấn)
+      const formData = new FormData(jdForm);
+
+      try {
+        const response = await fetch(jdForm.action, {
+          method: 'POST',
+          body: formData
+        });
+        const data = await response.json();
+        if (data.error) {
+          alert(data.error);
+        } else {
+          // Hiển thị câu hỏi được tạo ra và lưu vào các trường hidden cho form đánh giá
+          document.getElementById('generatedQuestion').innerHTML = data.question;
+          document.getElementById('hiddenJDText').value = data.jdText;
+          document.getElementById('hiddenQuestion').value = data.question;
+          document.getElementById('questionSection').style.display = 'block';
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Có lỗi xảy ra, vui lòng thử lại.");
+      } finally {
+        // Mở lại nút submit và ẩn spinner
+        submitJD.disabled = false;
+        jdSpinner.style.display = 'none';
+      }
+    });
+
+    /**********************
+     * Xử lý submit form đánh giá câu trả lời
+     **********************/
+    document.getElementById('answerForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const answerForm = e.target;
+      const submitAnswer = document.getElementById('submitAnswer');
+      const answerSpinner = document.getElementById('answerSpinner');
+
+      // Trước khi submit, sao chép nội dung từ Ace Editor vào textarea ẩn
+      document.getElementById('answer').value = editor.getValue();
+
+      // Disable nút submit và hiển thị spinner khi đang xử lý
+      submitAnswer.disabled = true;
+      answerSpinner.style.display = 'inline-block';
+
+      const formData = new FormData(answerForm);
+
+      try {
+        const response = await fetch(answerForm.action, {
+          method: 'POST',
+          body: formData
+        });
+        const data = await response.json();
+        if (data.error) {
+          alert(data.error);
+        } else {
+          // Hiển thị kết quả đánh giá
+          document.getElementById('evaluationResult').innerHTML = data.evaluation;
+          document.getElementById('evaluationSection').style.display = 'block';
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Có lỗi xảy ra, vui lòng thử lại.");
+      } finally {
+        // Mở lại nút submit và ẩn spinner
+        submitAnswer.disabled = false;
+        answerSpinner.style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>
