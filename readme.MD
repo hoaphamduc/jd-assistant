@@ -77,7 +77,7 @@ GEN_API_KEY=your_google_api_key_here
 PORT=3000
 ```
 
-> **Chú ý:** Thay `your_google_api_key_here` bằng API key của bạn.
+> **Chú ý:** Thay `your_google_api_key_here` bằng API key của bạn. API key lây tại đây https://aistudio.google.com/apikey
 
 ## Chạy Ứng Dụng
 
