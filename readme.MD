@@ -32,7 +32,7 @@ JD Assistant là một ứng dụng web giúp tạo ra các câu hỏi phỏng v
 1. **Clone Repository hoặc tải về mã nguồn:**
 
     ```bash
-    git clone <repository-url>
+    git clone https://github.com/hoaphamduc/jd-assistant.git
     cd jd-assistant
     ```
 
